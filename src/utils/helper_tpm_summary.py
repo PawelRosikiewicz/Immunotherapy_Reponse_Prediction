@@ -213,3 +213,93 @@ def tpm_plots(df, n=None, deg=2, hue=None,title=None, color=None):
     sns.despine()
     fig.tight_layout()
     plt.show();
+    
+    
+    
+# Function, .............................................. 
+def qc_for_selected_genes(tpm_data, target_var, gene_list=None, prefix="tpm"):
+    ''' Function that provides additional information on genes evaluated with compare_gene_expression() function, 
+        It looks into original data on each postion, and we will extract the follpowing:
+            * number of samples wiht missing information in eahc group
+            * mean, median, sd, of Tpm's in each group
+        
+        parametrs:
+        . tpm_data; pd. data frame, with tpm data, either raw, or log
+        . target_var; pd Series, with len()==tpm_data.shape[0], 
+        . gene_list; list with genes, or index names in tpm_data, that will be used to subset the data, 
+        . prefix; str, prefix added to column names, eg if you wish to create qc for different tables, and join them together
+        
+        Caution: 
+        * in order to have the same positons selected, and samples withoitu outliers, use 
+            * ttest_results df, returned by compare_gene_exprasion funciton - to provide table ,a dn gene names
+            * y_tranf, ie target variable, with removed outliers,  
+            * if not, target variable is not provided it will use all the data,  
+            * df wiht tpm, either raw, or log transformed
+    '''
+  
+  
+    # data prep
+
+    # test input df, & work on df copy,
+    assert type(tpm_data) == pd.DataFrame, "tpm_data Incorrect obj type"
+    assert type(gene_list) == list, "ttest_table Incorrect obj type"
+    tpm_data, gene_list = tpm_data.copy(), gene_list.copy()
+
+    # check target var
+    if target_var is not None:
+        assert type(target_var) == pd.Series, "target_var Incorrect obj type"
+        target_var = target_var.copy()
+    else:
+        target_var = pd.Series(["all"]*tpm_data.shape[0])
+    unique_target_var = target_var.unique().tolist()
+
+
+    # data processing 
+    '''provide summary for eacg gene, 
+       for each group in target variable
+    '''
+
+    # . custom function
+    def no_tpm(x):
+        '''custom function to estimate data completnes per gene'''
+        return 1-(np.sum(x==0)/len(x))
+
+    # . column names for results
+    column_names = ['mean', 'median', 'std', 'PercExpr']
+    if prefix is not None:
+        column_names = [f'{prefix}_{x}' for x in column_names]
+
+    # . empty list for the results    
+    df_res_column_names =[]
+
+    # . create summary table
+    for i, one_target_var in enumerate(unique_target_var): 
+
+        # subset the data for target var.
+        tpm_data_sub = tpm_data.loc[target_var==one_target_var,:]
+
+        # calulate mean, median, sd, and tpm==0, per gene and store them in df
+        df_res = pd.DataFrame(pd.concat([
+                tpm_data_sub.apply(np.mean, axis=0),
+                tpm_data_sub.apply(np.median, axis=0),
+                tpm_data_sub.apply(np.std, axis=0),
+                tpm_data_sub.apply(no_tpm, axis=0)
+            ],axis=1), 
+            index=tpm_data.columns
+        )
+
+        # add prefixed column names
+        if len(unique_target_var)>1:
+            df_res.columns = [f'{x}_{one_target_var}' for x in column_names]
+        else:
+            df_res.columns = column_names        
+        
+        # store all the results together
+        if i==0: df_res_full = df_res
+        else: df_res_full = pd.concat([df_res_full, df_res], axis=1)
+        
+    # select genes and return the table 
+    if gene_list is not None:
+        return df_res_full.loc[gene_list ,:]
+    else:
+        return df_res_full

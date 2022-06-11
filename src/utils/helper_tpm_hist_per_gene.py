@@ -28,7 +28,6 @@
 # ********************************************************************************** #
 
 
-
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
@@ -45,17 +44,15 @@ import matplotlib as mpl # to get basic plt   functions, heping with plot mnakin
 import matplotlib.pyplot as plt # for making plots, 
 
 
+
 # Function, .......................................................
-def tpm_hist(
+def tpm_hist_per_gene(
     df,
-    labels=None,
-    randomstate=0,
-    n=5,
+    genes=None, # list of genes, provided externally, to have the same genes observed on all plots,
     figsize=(15,2),
-    remove_zeros=True, # remove values <=0
+    remove_zeros=False, # remove values <=0
     density=False,
-    avg_profile="class", # "global"
-    colors = ("grey", "red"),
+    colors = ("red", "forestgreen"),
     title=""
     ):
     ''' draws step-type histogram for n examples (rows in input dataframe)
@@ -63,87 +60,55 @@ def tpm_hist(
         
         parameters
         . df; pd.DataFrame, rows used to plot data on individual histograms, 
-        . labels; pd.Series, or None, if series provided, n-.examples will be plotted on hist on different figures, 
-        . randomstate; int, used to have the same selection on all plots
-        . n; int, number of row examples, sampled, from each class to make the figure, each example is plotted on separate subplot 
+        . genes; list, wiht genes to display on subplots
         . figsize, tuple with two int, 
         . remove_zeros; if true, it removes remove values <=0
         . density; if True, areay under the hist sums to 1, 
-        . avg_profile="class", # "global"
-        . colors; tuple, with two colors, idx=0, for average  
-        . title; str, added at the beginning of the title
+        . colors; tuple, with two colors, idx=0, sirst colors used for median, 
+        . title; str
         
         returns
-        . fig or figures, with n-subplots with hist for each selected row, in input data frame. one figure is created for each class, in labels, 
+        . fig or figures, with n-subplots with hist for each selected row, in input data frame
     '''
-    # set colors and hist params
-    hist_params = dict(density=density, histtype="step", bins=100, linestyle="-")
+    # data prep.
+    
+    # work on copy, and transpose
+    '''I assume that genes are columns, and rows are samples'''
+    assert type(df) == pd.DataFrame, "Incorrect obj type"
+    df = df.transpose().copy()
 
-    # set see to have the same selection on all plots
-    np.random.seed(randomstate)
-
-    # check for labels
-    if labels is None:
-        labels = pd.Series(["examples taken from all samples"]*df.shape[0])
-    else:
-        pass
-
-    # get groups to plot on separate plots
-    labels_unique = labels.unique().tolist()
-
-    # creat one figure per group
-    for i, label in enumerate(labels_unique):
-
-        # find the group
-        class_label_idx = np.arange(df.shape[0])[(labels==label)]
-
-        # check if you have enought n, to smaple from
-        if n<=len(class_label_idx):
-            available_n = n
-        else:
-            available_n = len(class_label_idx)
-
-        # select n examples, 
-        selected_idx = np.random.choice(class_label_idx, size=available_n, replace=False)
-
-        # create average profile for the class/ or for all samples, 
-        if avg_profile=="class":
-            avg_class_profile = df.iloc[class_label_idx,:].median(axis=0)    
-        else:
-            avg_class_profile = df.median(axis=0)   
+    # gene gene names from data frame
+    gene_names = df.index.values.tolist()
+    
+    
+    # hist
         
-        # remove zeros, 
+    # create figure
+    fig, axs = plt.subplots(ncols=len(genes), nrows=1, figsize=figsize, facecolor="white")
+    plt.suptitle(f"{title}")
+
+    # plot hist of gene expr. profile in each 
+    for plt_i, ax in enumerate(axs.flat):
+
+        # prepare the data
+        idx = np.arange(df.shape[0])[pd.Series(gene_names)==genes[plt_i]]
+        data_for_hist = df.iloc[idx[0],:]
         if remove_zeros==True:
-            avg_class_profile = avg_class_profile.loc[avg_class_profile>0]
+            data_for_hist = data_for_hist.loc[data_for_hist>0]
         else:
             pass
+        
+        #ax.hist(average_class_profile, bins=100)
+        hist_params = dict(density=density, histtype="step", bins=100, linestyle="-")
+        ax.hist(data_for_hist, color=colors[1], label=f"samples", linewidth=1, **hist_params)
+        ax.axvline(data_for_hist.median(), color=colors[0], label="median", linewidth=4, alpha=0.5)
+            
+        # title. grid, and legen
+        ax.set_title(f"{genes[plt_i]}", fontsize=8, ha="center", color="black")
+        ax.legend(frameon=False, fontsize=8, loc="best")# loc="upper right")
 
-        # create figure
-        fig, axs = plt.subplots(ncols=available_n, nrows=1, figsize=figsize, facecolor="white")
-        plt.suptitle(f"{title} - class: {label}")
-
-        # plot hist of gene expr. profile in each 
-        for plt_i, ax in enumerate(axs.flat):
-
-            # prepare the data
-            data_for_hist = df.iloc[selected_idx[plt_i],:]
-            if remove_zeros==True:
-                data_for_hist = data_for_hist.loc[data_for_hist>0]
-            else:
-                pass
-
-            #ax.hist(average_class_profile, bins=100)
-            ax.hist(avg_class_profile, color=colors[0], label="average", linewidth=4, alpha=0.5, **hist_params)
-            ax.hist(data_for_hist, color=colors[1], label=f"sample {selected_idx[plt_i]}", linewidth=1, **hist_params)
-
-            # title. grid, and legen
-            ax.set_title(f"sample nr: {selected_idx[plt_i]}\n- tpm>0: {(data_for_hist>0).sum()}\n- tpm=0: {df.shape[1]-(data_for_hist>0).sum()}", 
-                         fontsize=8, ha="left", color="black")
-            ax.legend(frameon=False, fontsize=8)
-
-        fig.tight_layout()
-        fig.subplots_adjust(top=0.6)
-        sns.despine()
-        plt.show();
-
+    fig.tight_layout()
+    fig.subplots_adjust(top=0.6)
+    sns.despine()
+    plt.show();
 
