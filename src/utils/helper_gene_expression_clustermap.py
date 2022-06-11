@@ -105,7 +105,7 @@ def gene_expression_clustermap(df, labels,  n=None, figsize=(10,10), title=None,
     # heatmap,
     g.fig.axes[3].set_xlabel(f"samples")
     # small histogram legend,
-    g.fig.axes[4].set_title("Spearman Corr.")    
+    g.fig.axes[4].set_title("Gene Expression level")    
     
     # Legend - later on, I wish to modify that part, 
     

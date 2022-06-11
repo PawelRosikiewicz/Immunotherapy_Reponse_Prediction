@@ -182,7 +182,7 @@ def tpm_plots(df, n=None, deg=2, hue=None,title=None, color=None):
         z = np.polyfit(xdata, ydata, deg)
         x_new = np.linspace(0, xdata.max(), 300)
         p = np.poly1d(z)
-        axs[2].plot(x_new, p(x_new), color=color)        
+        axs[2].plot(x_new, p(x_new), color="black")        
         
     # aestetics
     axs[0].set_title("% of samples with detected\nexpression/transcripts")
