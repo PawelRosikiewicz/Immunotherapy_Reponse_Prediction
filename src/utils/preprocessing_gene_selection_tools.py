@@ -48,7 +48,7 @@ import scipy.stats as stats
 
 
 
-# Function, ..............................................
+# Function, ..............................................................................................
 def compare_gene_expression(x, y, method="median"):
     ''' simple funciton that calulates gene expression foldchnage between two classes of samples
         and ttstudent test, then it data frame, with list of all genes, sorted with pvalue from ttest, 
@@ -66,21 +66,33 @@ def compare_gene_expression(x, y, method="median"):
     assert type(y) == pd.Series, "y_train Incorrect obj type"
     x, y = x.copy(), y.copy()
         
-    # divide the set into two group
-    ttest=[]
-    Log2FC=[]
-    for idx in range(x.shape[1]):
-        one_row = x.iloc[:,idx].values
-        a = one_row[y==0]
-        b = one_row[y==1]
+    # add "tiny" value to x, to avoid dividing by 0, or log(0)
+    tval = 0
+    
+    # check how many unique goups are in the target variable
+    y_unique = y.unique().tolist()
+        
+    # donw wast time if there is only one group
+    '''done only to keep the rest of script run smottly'''
+    if y_unique==1:
+        ttest=[1]*x.shape[1] 
+        Log2FC=[0]*x.shape[1]        
+    else:
+        # divide the set into two group
+        ttest=[]
+        Log2FC=[]
+        for idx in range(x.shape[1]):
+            one_row = x.iloc[:,idx].values
+            a = one_row[y==0]
+            b = one_row[y==1]
 
-        # .. ttest
-        ttest.append((stats.ttest_ind(a, b).pvalue))
+            # .. ttest
+            ttest.append((stats.ttest_ind(a, b).pvalue))
 
-        # Log2FC
-        if method=="median": Log2FC.append(np.median(a)/np.median(b)-1)
-        if method=="mean": Log2FC.append(np.mean(a)/np.mean(b)-1)
-            
+            # Log2FC
+            if method=="median": Log2FC.append((np.median(b)+tval)-(np.median(a)+tval))
+            if method=="mean": Log2FC.append((np.mean(b)+tval)-(np.mean(a)+tval))
+
     # store results in nice dataframe
     results = pd.DataFrame([ttest,Log2FC]).transpose()
     results.columns = ['Pval', 'Log2FC']
@@ -88,14 +100,11 @@ def compare_gene_expression(x, y, method="median"):
     
     # calculate LogPval
     results['LogPval'] = -(np.log(results.loc[:,"Pval"]))
-    
     return results.sort_values(by="Pval", ascending=True)
 
 
 
-
-
-# Function, ..............................................
+# Function, ..............................................................................................
 def select_genes_and_make_volcano_plot(
     df, xname="Log2FC", yname="LogPval", pname="Pval", 
     title="Volcano Plot", figsize=(10,4),Ptr=0.05, Log2FCtr=2, create_plot=True
@@ -125,14 +134,12 @@ def select_genes_and_make_volcano_plot(
     
 
     # (A) prepare the data
-
     #.select upregulated & downregulatzed genes
     downregulated_genes = df.loc[(df.loc[:,xname]<(-Log2FCtr)) & (df.loc[:,pname]<=Ptr), :]
     upregulated_genes = df.loc[(df.loc[:,xname]>Log2FCtr) & (df.loc[:,pname]<=Ptr), :]    
     
     
     # (B) volcano plot
-    
     if create_plot==True:
 
         # make figure
@@ -157,10 +164,14 @@ def select_genes_and_make_volcano_plot(
             y=upregulated_genes.loc[:,yname], 
                     marker='h', alpha=1, s=5, color="red")   
 
-        # set limits, to make the plot more easy to read
-        xlimits = np.abs([downregulated_genes.loc[:,xname].min(),upregulated_genes.loc[:,xname].max()])
-        ax.set_xlim(-xlimits.max(), xlimits.max())    
-
+        # set limits, to make the plot more easy to real
+        '''try, because sometimes you will find no up/donw regulated genes'''
+        try:
+            xlimits = np.abs([downregulated_genes.loc[:,xname].min(),upregulated_genes.loc[:,xname].max()])
+            ax.set_xlim(-xlimits.max(), xlimits.max())    
+        except:
+            pass
+          
         # horizontal and vertical lines with Pval and Log2FC thresholds
         ax.axhline(-(np.log(Ptr)), lw=0.5, ls="--", color="black")
         ax.axvline(-(Log2FCtr), lw=0.5, ls="--", color="black")
@@ -179,16 +190,14 @@ def select_genes_and_make_volcano_plot(
     else:
         pass
     
-    
     # (C) return table
     selected_genes = pd.concat([downregulated_genes, upregulated_genes], axis=0)
     return selected_genes
-  
 
 
 
-    
-# Function, .............................................. 
+
+# Function, ..............................................................................................
 def qc_for_selected_genes(tpm_data, target_var, gene_list=None, prefix="tpm"):
     ''' Function that provides additional information on genes evaluated with compare_gene_expression() function, 
         It looks into original data on each postion, and we will extract the follpowing:
@@ -275,3 +284,5 @@ def qc_for_selected_genes(tpm_data, target_var, gene_list=None, prefix="tpm"):
         return df_res_full.loc[gene_list ,:]
     else:
         return df_res_full
+
+
