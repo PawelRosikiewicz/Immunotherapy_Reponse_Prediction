@@ -349,13 +349,17 @@ def data_preprocessing_pipeline(
     # . step 1. log1p to combat heteroscedascity,
     x_log = log_transformer(x)
     x_log = rebuild_df(x_log, x)
-
+    # ... reset index 
+    x_log.reset_index(drop=True, inplace=True)
+    
     # . step 2. remove genes with too much na and noise, 
     x_log_filtered = zv_filter.fit_transform(x_log, **zv_filter_dct)
 
     # . step 3. apply  to results from each sample
     x_log_filtered_scaled = robust_scaler.fit_transform(x_log_filtered)
-    x_log_filtered_scaled = rebuild_df(x_log_filtered_scaled, x_log_filtered)
+    x_log_filtered_scaled = rebuild_df(x_log_filtered_scaled, x_log_filtered)    
+    # ... reset index 
+    x_log_filtered_scaled.reset_index(drop=True, inplace=True)
     
     # . step 4. remove potential outliers from train data
     x_transf, y_transf = sp_filter.fit_transform(
@@ -366,15 +370,28 @@ def data_preprocessing_pipeline(
     x_samples_removed = sp_filter._train_samples_removed
     x_samples_accepted = sp_filter._train_samples_accepted
     x_samples_corr = sp_filter._train_samples_corr
-        
-    # . ... remove outliers from covarinats table
+    
+    if verbose==1 or verbose==2:    
+        print("\ntrain data: outlier removal step") # added because I had problems with these thresholds
+        print("REMOVED",x_samples_removed)
+        print("ACCEPTED",x_samples_accepted,"\n")
+    else:
+        pass
+    
+    # ... reset indexes
+    x_transf.reset_index(drop=True, inplace=True)  
+    y_transf.reset_index(drop=True, inplace=True)  
+
+    # ... remove outliers from covarinats table
     cov_table = cov_table.iloc[x_samples_accepted, :]
+    cov_table.reset_index(drop=True, inplace=True)        
         
-        
+      
     # pipeline - part 2 - DE Gene Selection
     
-    # . prepare log(tmp) file for DE analysis
+    # . prepare log(tmp) file for DE analysis (not, x_tranf !)
     de_x = x_log_filtered.iloc[x_samples_accepted,:]
+    de_x.reset_index(drop=True, inplace=True)  
     
     # . find diff. expressed genes & store qc data
     ttest_results = compare_gene_expression(x=de_x, y=y_transf, method="mean")
@@ -384,23 +401,30 @@ def data_preprocessing_pipeline(
         gene_list=ttest_results.index.values.tolist(), 
         )
     ttest_results = pd.concat([ttest_results, ttest_results_qc], axis=1)
-    deg_table = select_genes_and_make_volcano_plot(ttest_results, **select_genes_dct) # potential breaking point - if no genes meet criteria
+    deg_table = select_genes_and_make_volcano_plot(
+      ttest_results, **select_genes_dct) # potential breaking point - if no genes meet criteria
 
-    # . subset the data in x_tranf and 
+    # . subset the data in x_tranf and (selected by column name)
     x_transf_deg =  x_transf.loc[:,deg_table.index.values.tolist()]
+    x_transf_deg.reset_index(inplace=True, drop=True)
 
     
     # pipeline - part 3A - PCA
     if use_pca==True:
         pca.fit(x_transf_deg)
         x_components = pca.transform(x_transf_deg)   
-        x_components = pd.DataFrame(x_components, index=x_transf_deg.index)
+        x_components = pd.DataFrame(x_components)
+        x_components.reset_index(drop=True, inplace=True)
     else:
         x_components = x_transf_deg
   
-    # pipeline - part 3B - covarinat data preprocessor
+  
+    # pipeline - part 3B - covariant data preprocessor
     cov_table_transf = cov_data_preprocessor.fit_transform(cov_table)
+    cov_table_transf = pd.DataFrame(cov_table_transf)
+    cov_table_transf.reset_index(inplace=True, drop=True)
 
+    
     # pipeline - part 4 - store the data
     tpm_data["train"] = x_components
     target_data["train"] = y_transf 
@@ -427,8 +451,8 @@ def data_preprocessing_pipeline(
     gene_qc[f"train"]=deg_table    # i need to do second version for one table  
 
     # . verbose
-    verbose_info("train", global_qc_report, x_samples_accepted, x_samples_removed, ttest_results, x_transf_deg, verbose=verbose)
-    
+    verbose_info("train", global_qc_report, x_samples_accepted, 
+                 x_samples_removed, ttest_results, x_transf_deg, verbose=verbose)
     
     # . create hist, that will help you visualize whether selected genes are good, 
     if make_hist==True:
@@ -464,13 +488,16 @@ def data_preprocessing_pipeline(
         # . step 1. log1p to combat heteroscedascity,
         x_log = log_transformer(x)
         x_log = rebuild_df(x_log, x)
+        x_log.reset_index(drop=True, inplace=True)
 
         # . step 2. remove genes with too much na and noise, ---------
         x_log_filtered = zv_filter.transform(x_log)
+        x_log_filtered.reset_index(drop=True, inplace=True)
 
         # . step 3. apply  to results from each sample
         x_log_filtered_scaled = robust_scaler.transform(x_log_filtered)
         x_log_filtered_scaled = rebuild_df(x_log_filtered_scaled, x_log_filtered)
+        x_log_filtered_scaled.reset_index(drop=True, inplace=True)
         
         # . step 4. remove potential outliers from train data
         '''IN TRANSFORM, WE DO NOT REMOVE OUTLIERS, BUTT WE CHECK THEIR QUALITY'''
@@ -483,26 +510,37 @@ def data_preprocessing_pipeline(
         x_samples_removed = sp_filter._test_samples_removed
         x_samples_accepted = sp_filter._test_samples_accepted
         x_samples_corr = sp_filter._test_samples_corr
+        
+        # ...
+        x_samples_corr.reset_index(drop=True, inplace=True)
+        x_transf.reset_index(drop=True, inplace=True)
+        y_transf.reset_index(drop=True, inplace=True)
 
+        
         # pipeline - part 2
         '''in test samples we are using log files directly, no samples are removed'''
+        
         
         # . select DE genes, based on train data, 
         """subset the data in x_tranf with pre-selected genes from train data"""
         genes_to_subset = gene_qc["train"].index.values.tolist()
         x_transf_deg =  x_transf.loc[:,genes_to_subset]
-        
-        
+        x_transf_deg.reset_index(drop=True, inplace=True)
+      
         # pipeline - part 3A - PCA
         if use_pca==True:
             x_components = pca.transform(x_transf_deg)   
-            x_components = pd.DataFrame(x_components, index=x_transf_deg.index)
+            x_components = pd.DataFrame(x_components)
+            x_components.reset_index(drop=True, inplace=True)
         else:
             x_components = x_transf_deg       
 
+            
         # pipeline - part 3B - covarinat data preprocessor
         cov_table_transf = cov_data_preprocessor.transform(cov_table)
-
+        cov_table_transf = pd.DataFrame(cov_table_transf)
+        cov_table_transf.reset_index(drop=True, inplace=True)
+    
     
         # pipeline - part 4 - store the data
         tpm_data[f"test{i}"] = x_components
