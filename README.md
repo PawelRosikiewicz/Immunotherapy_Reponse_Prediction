@@ -84,16 +84,23 @@ P17_G2000_PCA, had only 150 features, with PCA done on scaled log(tpm) data
 in contrast, P17_G2000_LOG, had over 2500 features, with log(tpm) data,
 * Suggestion: I woould compare results provided with these two models, and if they are consistent, between reach other I wodul preffer using the model with smaller number of features for deployment, even if additional genes were providing noise to the data,
 
+![outliers_slide_01](images/All_models_ROC_AUC.png)
+![outliers_slide_01](images/All_models_Precision.png)
+![outliers_slide_01](images/All_models_Recall.png)
 
 
+__BEST PERFORMING MODEL__  
 
+__The model__
+* despite svm model ID 1790 had the highest ROC-AUC, the other model build with random forest alg. provides better treadoff in detecting good responders to treatment, (SEE NOTEBOOK 5 for more infromation, and tables)
+* from that reason, I will use model with ID 1636 to provide predictions on test data
 
+__Threshold adjustment__
+* after testing sever different thresholds, I found tr=0.3, as providing the best tread-off between Specificity and Sensitivity,
+* below you can see QC report
 
-__BIG PICTURE - HIGH LEVEL PATTERNS OBSERVED IN THE RESULTS__  
-
-
-
-
+__QC report for the model provided with my pipeline__
+![outliers_slide_01](images/QC_model_1636.png)
 
 
 
