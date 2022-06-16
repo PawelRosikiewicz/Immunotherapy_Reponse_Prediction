@@ -1,6 +1,5 @@
 # ********************************************************************************** #
-#                                                                                    #
-#   Project: Ardigen task                                                            #                        
+#                                                                                    #                        
 #   Author: Pawel Rosikiewicz                                                        #
 #   Contact: prosikiewicz(a)gmail.com                                                #
 #                                                                                    #

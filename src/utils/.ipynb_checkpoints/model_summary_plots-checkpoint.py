@@ -1,6 +1,7 @@
 # ********************************************************************************** #
 #                                                                                    #
-#   Project: FastClassAI workbecnch                                                  #                                                  
+#   Project: FastClassAI workbecnch                                                  #
+#.  modified at: 2022.06.013
 #                                                                                    #                      
 #   Author: Pawel Rosikiewicz                                                        #
 #   Contact: prosikiewicz_gmail.com                                                  #

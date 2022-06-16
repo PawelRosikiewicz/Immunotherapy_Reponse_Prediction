@@ -1,6 +1,5 @@
 # ********************************************************************************** #
-#                                                                                    #
-#   Project: Ardigen task                                                            #                        
+#                                                                                    #                       
 #   Author: Pawel Rosikiewicz                                                        #
 #   Contact: prosikiewicz(a)gmail.com                                                #
 #                                                                                    #
@@ -110,7 +109,7 @@ class SpearmanFilter():
         '''
         
         # store threshold parameters,  
-        self._tr=tr
+        self._tr=tr # may be modified later later, based on the quantile options
         self._quantile=quantile
         self._method=method
         self._avg_menthod=avg_menthod
@@ -153,7 +152,8 @@ class SpearmanFilter():
             '''1-threshold is used as quantile value'''
             lower_quntile_tr = train_samples_corr.quantile(1-tr)
             self._train_samples_removed = train_samples_corr.iloc[(train_samples_corr<lower_quntile_tr).values.tolist()].index.values.tolist()
-            self._train_samples_accepted = train_samples_corr.iloc[(train_samples_corr>=lower_quntile_tr).values.tolist()].index.values.tolist()    
+            self._train_samples_accepted = train_samples_corr.iloc[(train_samples_corr>=lower_quntile_tr).values.tolist()].index.values.tolist() 
+            self._tr=lower_quntile_tr
 
         # remove rejected samples and return the data
         x_transf = x.iloc[self._train_samples_accepted,:]
